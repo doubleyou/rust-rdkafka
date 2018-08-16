@@ -2,6 +2,7 @@
 use rdsys;
 use rdsys::types::*;
 
+use libc::c_char;
 use std::ffi::{CString, CStr};
 use std::slice;
 use std::mem;
@@ -111,7 +112,7 @@ impl<C: Context> Client<C> {
     pub fn new(config: &ClientConfig, native_config: NativeClientConfig, rd_kafka_type: RDKafkaType,
                context: C)
             -> KafkaResult<Client<C>> {
-        let errstr = [0i8; 1024];
+        let errstr = [0; 1024];
         let mut boxed_context = Box::new(context);
         unsafe { rdsys::rd_kafka_conf_set_opaque(native_config.ptr(), (&mut *boxed_context) as *mut C as *mut c_void) };
         unsafe { rdsys::rd_kafka_conf_set_log_cb(native_config.ptr(), Some(native_log_cb::<C>)) };
@@ -119,7 +120,7 @@ impl<C: Context> Client<C> {
         unsafe { rdsys::rd_kafka_conf_set_error_cb(native_config.ptr(), Some(native_error_cb::<C>)) };
 
         let client_ptr = unsafe {
-            rdsys::rd_kafka_new(rd_kafka_type, native_config.ptr_move(), errstr.as_ptr() as *mut i8, errstr.len())
+            rdsys::rd_kafka_new(rd_kafka_type, native_config.ptr_move(), errstr.as_ptr() as *mut c_char, errstr.len())
         };
         trace!("Create new librdkafka client {:p}", client_ptr);
 
@@ -265,7 +266,7 @@ impl Drop for NativeTopic {
 
 pub unsafe extern "C" fn native_log_cb<C: Context>(
         client: *const RDKafka, level: i32,
-        fac: *const i8, buf: *const i8) {
+        fac: *const c_char, buf: *const c_char) {
     let fac = CStr::from_ptr(fac).to_string_lossy();
     let log_message = CStr::from_ptr(buf).to_string_lossy();
 
@@ -275,7 +276,7 @@ pub unsafe extern "C" fn native_log_cb<C: Context>(
 }
 
 pub unsafe extern "C" fn native_stats_cb<C: Context>(
-        _conf: *mut RDKafka, json: *mut i8, json_len: usize,
+        _conf: *mut RDKafka, json: *mut c_char, json_len: usize,
         opaque: *mut c_void) -> i32 {
     let context = Box::from_raw(opaque as *mut C);
 
@@ -296,7 +297,7 @@ pub unsafe extern "C" fn native_stats_cb<C: Context>(
 }
 
 pub unsafe extern "C" fn native_error_cb<C: Context>(
-        _client: *mut RDKafka, err: i32, reason: *const i8,
+        _client: *mut RDKafka, err: i32, reason: *const c_char,
         opaque: *mut c_void) {
     let err = rdsys::primitive_to_rd_kafka_resp_err_t(err)
         .expect("global error not an rd_kafka_resp_err_t");

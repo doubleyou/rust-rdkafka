@@ -218,6 +218,7 @@
 #[macro_use] extern crate serde_derive;
 extern crate serde_json;
 extern crate futures;
+extern crate libc;
 
 extern crate rdkafka_sys as rdsys;
 

@@ -26,6 +26,7 @@ use client::Context;
 use error::{KafkaError, KafkaResult, IsError};
 use util::bytes_cstr_to_owned;
 
+use libc::c_char;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::mem;
@@ -150,7 +151,7 @@ impl ClientConfig {
             let value_c = CString::new(value.to_string())?;
             let ret = unsafe {
                 rdsys::rd_kafka_conf_set(conf, key_c.as_ptr(), value_c.as_ptr(),
-                                           errstr.as_ptr() as *mut i8, errstr.len())
+                                           errstr.as_ptr() as *mut c_char, errstr.len())
             };
             if ret.is_error() {
                 let descr = unsafe { bytes_cstr_to_owned(&errstr) };
